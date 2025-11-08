@@ -17,6 +17,15 @@ const ProjectCard = ({ project, onEdit }) => {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const getPriorityDot = (priority) => {
+    switch (priority) {
+      case 'High': return 'bg-red-500 shadow-red-500/30';
+      case 'Medium': return 'bg-orange-500 shadow-orange-500/30';
+      case 'Low': return 'bg-blue-500 shadow-blue-500/30';
+      default: return 'bg-gray-400';
+    }
+  };
   
   return (
     <div 
@@ -28,6 +37,7 @@ const ProjectCard = ({ project, onEdit }) => {
           <p className="text-sm text-text-secondary mt-1">{project.customer}</p>
         </div>
         <div className="flex items-center gap-2">
+          <span className={`h-2.5 w-2.5 rounded-full shadow-sm ${getPriorityDot(project.priority)}`} title={`Priority: ${project.priority}`}></span>
           <span className={`text-xs font-semibold px-2.5 py-1 rounded-pill ${getStatusColor(project.status)}`}>{project.status}</span>
           <button onClick={()=>onEdit(project)} className="text-brand-muted hover:text-text-primary p-1 rounded-md" title="Edit project">
             <Pencil className="w-4 h-4" />

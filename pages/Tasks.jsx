@@ -148,7 +148,7 @@ const TaskColumn = ({ title, tasks, users, onDropTask, onDragStart, onEdit, onAs
 }
 
 const Tasks = ({ projectId }) => {
-  const { tasks, users, projects } = useData();
+  const { tasks, users, projects, upsertTask, removeTask } = useData();
   const isScoped = !!projectId; // if true, we are inside Project Detail and must hide dropdown
   const [selectedProject, setSelectedProject] = useState(projectId || 'all');
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -185,6 +185,8 @@ const Tasks = ({ projectId }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(()=>{ setTaskData(tasks); }, [tasks]);
+
   const openCreate = () => { setEditingTask(null); setModalOpen(true); };
   const openEdit = (task) => { setEditingTask(task); setModalOpen(true); };
 
@@ -207,19 +209,18 @@ const Tasks = ({ projectId }) => {
   const handleDropTask = (e, newStatus) => {
     const id = e.dataTransfer.getData('text/plain');
     if (!id) return;
-    setTaskData(prev => prev.map(t => t.id === id ? { ...t, status: newStatus, updatedAt: new Date().toISOString() } : t));
+    const t = taskData.find(x => x.id === id);
+    if (!t) return;
+    const updated = { ...t, status: newStatus, updatedAt: new Date().toISOString() };
+    upsertTask(updated);
   };
 
   const saveTask = (task) => {
-    setTaskData(prev => {
-      const existing = prev.find(t => t.id === task.id);
-      if (existing) return prev.map(t => t.id === task.id ? task : t);
-      return [...prev, task];
-    });
+    upsertTask(task);
   };
 
   const deleteTask = (id) => {
-    setTaskData(prev => prev.filter(t => t.id !== id));
+    removeTask(id);
   };
 
   // Inline assignee update
@@ -228,7 +229,9 @@ const Tasks = ({ projectId }) => {
       if (t.id !== taskId) return t;
       const existing = Array.isArray(t.assignees) ? t.assignees : (t.assignee ? [t.assignee] : []);
       const next = existing.includes(userId) ? existing.filter(id => id !== userId) : [...existing, userId];
-      return { ...t, assignees: next, assignee: undefined, updatedAt: new Date().toISOString() };
+      const updated = { ...t, assignees: next, assignee: undefined, updatedAt: new Date().toISOString() };
+      upsertTask(updated);
+      return updated;
     }));
   };
 
@@ -335,7 +338,8 @@ const TaskModal = ({ onClose, onSave, onDelete, users, projects, scopedProjectId
         assignee: undefined,
         tags: defaultValue.tags || '',
         image: defaultValue.image || null,
-        timesheets: Array.isArray(defaultValue.timesheets) ? defaultValue.timesheets : [],
+        // Normalize timesheets to include minutes and description
+        timesheets: Array.isArray(defaultValue.timesheets) ? defaultValue.timesheets.map(t => ({ ...t, minutes: t.minutes ?? 0, description: t.description ?? '' })) : [],
         status: defaultValue.status || 'New',
         priority: defaultValue.priority || 'Medium',
         updatedAt: new Date().toISOString(),
@@ -362,13 +366,16 @@ const TaskModal = ({ onClose, onSave, onDelete, users, projects, scopedProjectId
   const toggleAssignee = (id) => setField('assignees', form.assignees.includes(id) ? form.assignees.filter(x => x !== id) : [...form.assignees, id]);
 
   const addTimesheetLine = () => {
-    setField('timesheets', [...(form.timesheets || []), { id: 'ts-' + Math.random().toString(36).slice(2), employeeId: users[0]?.id || '', hours: 0 }]);
+    const firstAssignee = (form.assignees && form.assignees.length) ? form.assignees[0] : '';
+    setField('timesheets', [...(form.timesheets || []), { id: 'ts-' + Math.random().toString(36).slice(2), employeeId: firstAssignee, hours: 0, minutes: 0, description: '' }]);
   };
   const updateTimesheet = (id, patch) => {
     setField('timesheets', (form.timesheets || []).map(t => t.id === id ? { ...t, ...patch } : t));
   };
   const removeTimesheet = (id) => { setField('timesheets', (form.timesheets || []).filter(t => t.id !== id)); };
-  const totalHours = (form.timesheets || []).reduce((s,t)=> s + (Number(t.hours)||0), 0);
+  const totalMinutes = (form.timesheets || []).reduce((s,t)=> s + ((Number(t.hours)||0) * 60) + (Number(t.minutes)||0), 0);
+  const totalH = Math.floor(totalMinutes / 60);
+  const remM = totalMinutes % 60;
 
   const handleSave = (e) => {
     e.preventDefault();
@@ -468,26 +475,43 @@ const TaskModal = ({ onClose, onSave, onDelete, users, projects, scopedProjectId
                 <button type="button" onClick={addTimesheetLine} className="px-3 py-1.5 rounded-md border border-brand-border text-xs hover:bg-brand-bg flex items-center gap-2"><Plus className="w-4 h-4"/> Add a line</button>
               </div>
               <div className="space-y-2">
-                {form.timesheets.map(line => (
-                  <div key={line.id} className="grid grid-cols-12 gap-2 items-center">
-                    <select value={line.employeeId} onChange={e=>updateTimesheet(line.id,{employeeId:e.target.value})} className="col-span-6 px-3 py-2 rounded-xl border border-brand-border text-sm">{users.map(u=> <option key={u.id} value={u.id}>{u.name}</option>)}</select>
-                    <div className="col-span-4 relative">
-                      <Clock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted" />
-                      <input type="number" min={0} value={line.hours} onChange={e=>updateTimesheet(line.id,{hours:Number(e.target.value)})} className="pl-9 w-full px-3 py-2 rounded-xl border border-brand-border text-sm" placeholder="Hours" />
+                {/* Column headers for clarity */}
+                <div className="grid grid-cols-12 gap-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-brand-muted">
+                  <div className="col-span-4">Member</div>
+                  <div className="col-span-2">Hours</div>
+                  <div className="col-span-2">Minutes</div>
+                  <div className="col-span-3">Description</div>
+                  <div className="col-span-1 text-right"> </div>
+                </div>
+                {form.timesheets.map(line => {
+                  const assigneeUsers = users.filter(u => (form.assignees||[]).includes(u.id));
+                  return (
+                    <div key={line.id} className="grid grid-cols-12 gap-2 items-center">
+                      <select aria-label="Timesheet member" value={line.employeeId} onChange={e=>updateTimesheet(line.id,{employeeId:e.target.value})} className="col-span-4 px-3 py-2 rounded-xl border border-brand-border text-sm">
+                        {assigneeUsers.length ? assigneeUsers.map(u=> (<option key={u.id} value={u.id}>{u.name}</option>)) : (<option value="">No assignees</option>)}
+                      </select>
+                      <div className="col-span-2 relative">
+                        <Clock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted" />
+                        <input aria-label="Hours" type="number" min={0} value={line.hours ?? 0} onChange={e=>updateTimesheet(line.id,{hours:Number(e.target.value)})} className="pl-9 w-full px-3 py-2 rounded-xl border border-brand-border text-sm" placeholder="Hours" />
+                      </div>
+                      <div className="col-span-2">
+                        <input aria-label="Minutes" type="number" min={0} max={59} value={line.minutes ?? 0} onChange={e=>updateTimesheet(line.id,{minutes:Number(e.target.value)})} className="w-full px-3 py-2 rounded-xl border border-brand-border text-sm" placeholder="Min" />
+                      </div>
+                      <input aria-label="Description" type="text" value={line.description || ''} onChange={e=>updateTimesheet(line.id,{description:e.target.value})} className="col-span-3 px-3 py-2 rounded-xl border border-brand-border text-sm" placeholder="Description" />
+                      <button aria-label="Remove timesheet line" type="button" onClick={()=>removeTimesheet(line.id)} className="col-span-1 text-red-600 text-xs">Remove</button>
                     </div>
-                    <button type="button" onClick={()=>removeTimesheet(line.id)} className="col-span-2 text-red-600 text-xs">Remove</button>
-                  </div>
-                ))}
+                  );
+                })}
                 {!form.timesheets.length && <div className="text-xs text-brand-muted">No timesheets yet.</div>}
               </div>
-              <div className="mt-2 text-xs text-brand-muted">Total Logged: <span className="font-semibold text-text-primary">{totalHours}h</span></div>
+              <div className="mt-2 text-xs text-brand-muted">Total Logged: <span className="font-semibold text-text-primary">{totalH}h {remM}m</span></div>
             </div>
           )}
           {tab==='Task Info' && (
             <div className="text-sm space-y-2">
               <div><span className="text-brand-muted">Created:</span> {new Date(form.createdAt).toLocaleString()}</div>
               <div><span className="text-brand-muted">Last Updated:</span> {new Date(form.updatedAt).toLocaleString()}</div>
-              <div><span className="text-brand-muted">Total Hours:</span> {totalHours}h</div>
+              <div><span className="text-brand-muted">Total Logged:</span> {totalH}h {remM}m</div>
               <div><span className="text-brand-muted">Tags:</span> {form.tags || '—'}</div>
               <div><span className="text-brand-muted">Assignees:</span> {form.assignees.length ? form.assignees.map(id => users.find(u => u.id === id)?.name).filter(Boolean).join(', ') : '—'}</div>
               <div><span className="text-brand-muted">Status:</span> {form.status}</div>

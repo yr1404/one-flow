@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { ChevronDown, User, LogOut, Search, X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import logoUrl from '../assets/logo.svg';
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -26,13 +27,16 @@ const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white/70 backdrop-blur-md border-b border-brand-border/80">
+    <header className="hidden md:block sticky top-0 z-30 bg-white/70 backdrop-blur-md border-b border-brand-border/80">
       <div className="px-6 h-16 flex items-center justify-between">
-        <h2 className="text-lg font-semibold tracking-tight">{getPageTitle()}</h2>
+        <div className="flex items-center gap-3 min-w-0">
+          {/* <img src={logoUrl} alt="OneFlow" className="h-8 w-8 rounded-md object-contain" /> */}
+          <h2 className="text-lg font-semibold tracking-tight truncate">{getPageTitle()}</h2>
+        </div>
         <div className="flex items-center gap-5">
           <div className="hidden md:flex items-center relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
-            <input type="text" placeholder="Search..." className="pl-9 pr-4 py-2 rounded-pill bg-brand-bg border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-indigo/40 text-sm placeholder:text-brand-muted" />
+            {/* <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" /> */}
+            {/* <input type="text" placeholder="Search..." className="pl-9 pr-4 py-2 rounded-pill bg-brand-bg border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-indigo/40 text-sm placeholder:text-brand-muted" /> */}
           </div>
           <div className="relative" ref={dropdownRef}>
             <button 

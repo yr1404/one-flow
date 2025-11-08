@@ -4,7 +4,21 @@ import { initialData } from '../data/mockData.js';
 const DataContext = createContext(null);
 
 export const DataProvider = ({ children }) => {
-  const [data, setData] = useState(initialData);
+  const computeProgress = (projects, tasks) => {
+    return projects.map(p => {
+      const pts = tasks.filter(t => t.projectId === p.id);
+      if (!pts.length) return p.status === 'Completed' ? { ...p, progress: 100 } : { ...p, progress: p.progress || 0 };
+      const done = pts.filter(t => t.status === 'Done').length;
+      const computed = Math.round((done / pts.length) * 100);
+      return { ...p, progress: p.status === 'Completed' ? 100 : computed };
+    });
+  };
+
+  const [data, setData] = useState(() => {
+    const base = initialData;
+    const updatedProjects = computeProgress(base.projects || [], base.tasks || []);
+    return { ...base, projects: updatedProjects };
+  });
 
   // In a real app, you'd have functions here to interact with an API (e.g., using React Query)
   // For this MVP, we'll just pass the static data and some CRUD helpers.
@@ -15,6 +29,29 @@ export const DataProvider = ({ children }) => {
   
   const getTasksByProjectId = (projectId) => {
     return data.tasks.filter(t => t.projectId === projectId);
+  };
+
+  // Recalculate progress for all projects after task changes
+  const recalcAllProjectProgress = (tasksList) => {
+    return computeProgress(data.projects, tasksList);
+  };
+
+  const upsertTask = (task) => {
+    setData(prev => {
+      const list = prev.tasks || [];
+      const idx = list.findIndex(t => t.id === task.id);
+      const nextTasks = idx === -1 ? [...list, task] : list.map(t => t.id === task.id ? { ...t, ...task } : t);
+      const nextProjects = recalcAllProjectProgress(nextTasks);
+      return { ...prev, tasks: nextTasks, projects: nextProjects };
+    });
+  };
+
+  const removeTask = (taskId) => {
+    setData(prev => {
+      const nextTasks = prev.tasks.filter(t => t.id !== taskId);
+      const nextProjects = recalcAllProjectProgress(nextTasks);
+      return { ...prev, tasks: nextTasks, projects: nextProjects };
+    });
   };
 
   // --- Helpers for documents/entities ---
@@ -74,11 +111,16 @@ export const DataProvider = ({ children }) => {
       let next = [...list];
       if (idx === -1) {
         const newId = project.id || 'proj-' + Math.random().toString(36).slice(2);
-        next = [...list, { ...project, id: newId }];
+        const baseProj = { ...project, id: newId };
+        const withProgress = baseProj.status === 'Completed' ? { ...baseProj, progress: 100 } : baseProj;
+        next = [...list, withProgress];
       } else {
-        next[idx] = { ...list[idx], ...project };
+        const merged = { ...list[idx], ...project };
+        next[idx] = merged.status === 'Completed' ? { ...merged, progress: 100 } : merged;
       }
-      return { ...prev, projects: next };
+      // Recompute progress for all projects based on current tasks (in case task distribution changed)
+      const recomputed = computeProgress(next, prev.tasks);
+      return { ...prev, projects: recomputed };
     });
   };
 
@@ -104,6 +146,8 @@ export const DataProvider = ({ children }) => {
     removeEntity,
     upsertProject,
     removeProject,
+    upsertTask,
+    removeTask,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
