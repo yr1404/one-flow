@@ -12,6 +12,9 @@ const Project = sequelize.define("Project", {
   status: { type: DataTypes.STRING(50), defaultValue: "planned" },
   priority: { type: DataTypes.STRING(30) },
   budget: { type: DataTypes.DECIMAL(12,2) },
+  // simple tag label; adjust to ARRAY(DataTypes.STRING) if you need multiple tags per project
+  tag: { type: DataTypes.STRING(100) },
+  image_url:{type:DataTypes.STRING()}
 });
 
 module.exports = Project;

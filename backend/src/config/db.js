@@ -1,21 +1,26 @@
-// models/db-sequelize.js
-const { Sequelize } = require("sequelize");
-require("dotenv").config();
+require('dotenv').config();
+const sequelize = require('../models/db-sequelize');
 
-const sequelize = new Sequelize(
-  process.env.DB_NAME || process.env.PGDATABASE || "postgres",
-  process.env.DB_USER || process.env.PGUSER || "postgres",
-  process.env.DB_PASS || process.env.PGPASSWORD || "",
-  {
-    host: process.env.DB_HOST || process.env.PGHOST || "localhost",
-    port: process.env.DB_PORT ? Number(process.env.DB_PORT) : (process.env.PGPORT ? Number(process.env.PGPORT) : 5432),
-    dialect: "postgres",
-    logging: false, // set true for SQL logs
-    define: {
-      underscored: true,
-      timestamps: true,
-    },
+async function connectDB({ sync = true } = {}) {
+  await sequelize.authenticate();
+  if (sync) {
+    const mode = process.env.DB_SYNC_MODE || (process.env.NODE_ENV === 'production' ? 'normal' : 'alter'); // normal | alter | force
+    if (mode === 'alter') {
+      await sequelize.sync({ alter: true });
+      console.log('DB synced (alter)');
+    } else if (mode === 'force') {
+      await sequelize.sync({ force: true });
+      console.log('DB synced (force)');
+    } else {
+      await sequelize.sync();
+      console.log('DB synced');
+    }
   }
-);
+  console.log('Database connected');
+  return sequelize;
+}
 
-module.exports = sequelize;
+module.exports = {
+  sequelize,
+  connectDB,
+};

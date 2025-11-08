@@ -12,10 +12,11 @@ const Expense = require("./expense");
 const Team = require("./team");
 const TeamMember = require("./teamMember");
 const ProjectTeam = require("./projectTeam");
-const Vendor = require("./vendor");
+// Partner replaces Vendor & Customer (role enum distinguishes)
+const Partner = require("./partner");
 const PurchaseOrder = require("./purchaseOrder");
 const PurchaseOrderItem = require("./purchaseOrderItem");
-const Customer = require("./customer");
+// Remove separate Customer model in favor of Partner
 const SalesOrder = require("./salesOrder");
 const SalesOrderItem = require("./salesOrderItem");
 const Product = require("./product");
@@ -68,9 +69,9 @@ TeamMember.belongsTo(User, { foreignKey: "user_id" });
 Team.belongsToMany(Project, { through: ProjectTeam, foreignKey: "team_id", otherKey: "project_id", as: "projects" });
 Project.belongsToMany(Team, { through: ProjectTeam, foreignKey: "project_id", otherKey: "team_id", as: "teams" });
 
-// Vendor & PurchaseOrder
-Vendor.hasMany(PurchaseOrder, { foreignKey: "vendor_id" });
-PurchaseOrder.belongsTo(Vendor, { foreignKey: "vendor_id" });
+// Partner (role='vendor') & PurchaseOrder
+Partner.hasMany(PurchaseOrder, { foreignKey: "vendor_id", as: "purchase_orders" });
+PurchaseOrder.belongsTo(Partner, { foreignKey: "vendor_id", as: "vendor" });
 Project.hasMany(PurchaseOrder, { foreignKey: "project_id" });
 PurchaseOrder.belongsTo(Project, { foreignKey: "project_id" });
 User.hasMany(PurchaseOrder, { foreignKey: "created_by" });
@@ -82,9 +83,9 @@ PurchaseOrderItem.belongsTo(PurchaseOrder, { foreignKey: "purchase_order_id" });
 Product.hasMany(PurchaseOrderItem, { foreignKey: "product_id" });
 PurchaseOrderItem.belongsTo(Product, { foreignKey: "product_id" });
 
-// Customer & SalesOrder
-Customer.hasMany(SalesOrder, { foreignKey: "customer_id" });
-SalesOrder.belongsTo(Customer, { foreignKey: "customer_id" });
+// Partner (role='customer') & SalesOrder
+Partner.hasMany(SalesOrder, { foreignKey: "customer_id", as: "sales_orders" });
+SalesOrder.belongsTo(Partner, { foreignKey: "customer_id", as: "customer" });
 User.hasMany(SalesOrder, { foreignKey: "created_by" });
 SalesOrder.belongsTo(User, { foreignKey: "created_by" });
 
@@ -107,10 +108,9 @@ module.exports = {
   Team,
   TeamMember,
   ProjectTeam,
-  Vendor,
+  Partner,
   PurchaseOrder,
   PurchaseOrderItem,
-  Customer,
   SalesOrder,
   SalesOrderItem,
   Product,
