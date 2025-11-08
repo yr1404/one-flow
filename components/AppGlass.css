@@ -1,0 +1,118 @@
+:root{
+  --grid-1: #ffffff;
+  --grid-2: #f6f9fc;
+  /* New semantic colors */
+  --c-bg: #f1f5f9;
+  --c-bg-alt: #eef2f7;
+  --c-border: #e2e8f0;
+  --c-border-soft: #e8edf3;
+  --c-text: #0f172a;
+  --c-muted: #64748b;
+  --c-accent: #4f46e5;
+  --c-accent-rgb: 79 70 229;
+  --c-accent-alt: #6366f1;
+  --c-success: #10b981;
+  --c-danger: #ef4444;
+  --c-warning: #f59e0b;
+  --radius-sm: .5rem;
+  --radius: 1rem;
+  --radius-lg: 1.25rem;
+  --shadow-soft: 0 2px 4px -2px rgba(0,0,0,.04), 0 6px 18px -6px rgba(0,0,0,.06);
+  --shadow-elevated: 0 8px 24px -6px rgba(15,23,42,.12), 0 2px 8px -2px rgba(15,23,42,.06);
+  --gradient-accent: linear-gradient(135deg,#4f46e5 0%,#6366f1 50%,#8b5cf6 100%);
+  --gradient-soft: linear-gradient(135deg,#ffffff 0%,#f8fafc 60%,#f1f5f9 100%);
+  --gradient-blue: linear-gradient(135deg,#2563eb 0%,#4f46e5 60%,#6366f1 100%);
+}
+
+/***** App background *****/
+.app-bg {
+  background-image:
+    radial-gradient(90rem 70rem at -10% -20%, rgba(79,70,229,0.10), transparent 60%),
+    radial-gradient(70rem 50rem at 110% 10%, rgba(1,167,132,0.08), transparent 60%),
+    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  background-attachment: fixed;
+}
+
+/* Glass & card utilities */
+.glass-card {
+  position: relative;
+  background: linear-gradient(180deg,rgba(255,255,255,.9),rgba(255,255,255,.75));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+
+.card-neutral { background: var(--gradient-soft); }
+
+.card-hoverable { transition: box-shadow .25s ease, transform .25s ease, border-color .25s ease; }
+.card-hoverable:hover { box-shadow: var(--shadow-elevated); transform: translateY(-2px); border-color: var(--c-accent-alt); }
+
+/* Accent ring for icon containers */
+.icon-ring {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 46px; height: 46px; border-radius: 14px;
+  background: radial-gradient(circle at 30% 30%, rgba(var(--c-accent-rgb) / .25), rgba(var(--c-accent-rgb) / .05));
+  position: relative; color: var(--c-accent); font-size: 1.15rem;
+}
+.icon-ring::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--gradient-accent);
+  -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+/* Statistic card */
+.stat-card { display:flex; gap:1rem; padding:1.25rem 1.35rem; border:1px solid var(--c-border-soft); border-radius: var(--radius-lg); background: var(--gradient-soft); position:relative; overflow:hidden; }
+.stat-card:after { content:""; position:absolute; inset:0; background:radial-gradient(70% 100% at 110% 0%, rgba(var(--c-accent-rgb) / .08), transparent); pointer-events:none; }
+.stat-card .stat-label { font-size:.75rem; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--c-muted); }
+.stat-card .stat-value { font-size:1.9rem; line-height:1.1; font-weight:700; letter-spacing:-.02em; color:var(--c-text); }
+
+/* Pill buttons */
+.btn-pill { --btn-bg: var(--c-accent); display:inline-flex; align-items:center; gap:.5rem; background:var(--gradient-accent); color:#fff; font-weight:600; padding:.65rem 1.1rem; font-size:.825rem; border-radius:9999px; box-shadow:0 2px 4px rgba(var(--c-accent-rgb) / .35),0 0 0 1px rgba(var(--c-accent-rgb) / .4); transition: all .25s ease; }
+.btn-pill:hover { filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 6px 18px -4px rgba(var(--c-accent-rgb) / .35); }
+.btn-pill:active { transform:translateY(0); box-shadow:0 2px 6px -2px rgba(var(--c-accent-rgb) / .4); }
+
+/* Subtle separator */
+.divider { height:1px; width:100%; background:linear-gradient(90deg,transparent,#e5eaf1,transparent); margin:.75rem 0; }
+
+/* Soft fade-in for dropdowns and cards */
+@keyframes fade-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-in { animation: fade-in .18s ease-out; }
+
+/* Fade-grow for mounting components */
+@keyframes fade-grow { from { opacity:0; transform: translateY(6px) scale(.98);} to {opacity:1; transform:translateY(0) scale(1);} }
+.mount { animation: fade-grow .35s cubic-bezier(.4,.18,.2,1); }
+
+/* Scroll area styling (overlay) */
+.scroll-mask { -webkit-mask: linear-gradient(#000, #000 calc(100% - 30px), transparent); mask: linear-gradient(#000, #000 calc(100% - 30px), transparent); }
+
+/* Utility: subtle text gradient accent */
+.text-gradient { background: var(--gradient-blue); -webkit-background-clip: text; background-clip: text; color:transparent; }
+
+/* Tables / lists */
+.row-hover { transition: background .2s ease; }
+.row-hover:hover { background: rgba(var(--c-accent-rgb) / .04); }
+
+/* Shadows helpers if used outside tailwind config */
+.shadow-soft { box-shadow: var(--shadow-soft); }
+.shadow-elevated { box-shadow: var(--shadow-elevated); }
+
+/* Modal helpers: rounded shell + inner scroll body */
+.modal-shell { border-radius: var(--radius-lg); background: #fff; box-shadow: var(--shadow-elevated); border: 1px solid var(--c-border); overflow: hidden; }
+.modal-body { max-height: 90vh; overflow: auto; padding: 1.5rem; scrollbar-gutter: stable; overscroll-behavior: contain; }
+.modal-body::-webkit-scrollbar { width: 10px; height: 10px; }
+.modal-body::-webkit-scrollbar-track { background: transparent; }
+.modal-body::-webkit-scrollbar-thumb { background: rgba(2,6,23,0.2); border-radius: 9999px; border: 3px solid #fff; }
+
+/* Ensure Firefox scrollbars look decent in modals */
+@supports (scrollbar-width: thin) {
+  .modal-body { scrollbar-width: thin; scrollbar-color: rgba(2,6,23,0.35) transparent; }
+}
