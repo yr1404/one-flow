@@ -1,0 +1,5 @@
+{
+  "name": "OneFlow - Project Management",
+  "description": "A modular Project Management system that lets a Project Manager take a project from planning to execution to billing in one place. It includes features for managing projects, tasks, sales orders, purchase orders, invoices, and expenses.",
+  "requestFramePermissions": []
+}
