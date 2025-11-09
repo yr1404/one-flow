@@ -55,4 +55,7 @@ router.get('/:id/assignees', auth.optional, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Delete Task
+router.delete('/:id', auth.required, ctrl.remove);
+
 module.exports = router;

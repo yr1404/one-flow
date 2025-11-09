@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
-  const [email, setEmail] = useState('alex.hartman@oneflow.com');
-  const [password, setPassword] = useState('password123');
-  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const { login, loading, error } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    login(email, password);
-    navigate('/dashboard');
+    const ok = await login(email, password);
+    if (ok) navigate('/dashboard');
   };
 
   return (
@@ -54,12 +54,15 @@ const Login = () => {
             </div>
           </div>
 
+          {error && <div className="text-xs text-red-600">{error}</div>}
+
           <div>
             <button
               type="submit"
-              className="w-full btn-pill justify-center"
+              disabled={loading}
+              className="w-full btn-pill justify-center disabled:opacity-50"
             >
-              Sign in
+              {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
         </form>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
+import { ApiProvider } from './contexts/ApiContext.jsx';
 import { DataProvider } from './contexts/DataContext.jsx';
 import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
@@ -23,38 +24,40 @@ function PrivateRoute({ children }) {
 function App() {
   return (
     <AuthProvider>
-      <DataProvider>
-        <HashRouter>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route 
-              path="/*" 
-              element={
-                <PrivateRoute>
-                  <Layout>
-                    <Routes>
-                      <Route index element={<Navigate to="/dashboard" />} />
-                      <Route path="dashboard" element={<Dashboard />} />
-                      <Route path="projects" element={<Projects />} />
-                      <Route path="projects/:projectId" element={<ProjectDetail />} />
-                      <Route path="tasks" element={<Tasks />} />
-                      <Route path="analytics" element={<Analytics />} />
-                      <Route path="sales-orders" element={<GlobalList type="Sales Order" />} />
-                      <Route path="purchase-orders" element={<GlobalList type="Purchase Order" />} />
-                      <Route path="customer-invoices" element={<GlobalList type="Customer Invoice" />} />
-                      <Route path="vendor-bills" element={<GlobalList type="Vendor Bill" />} />
-                      <Route path="expenses" element={<GlobalList type="Expense" />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </Layout>
-                </PrivateRoute>
-              } 
-            />
-          </Routes>
-        </HashRouter>
-      </DataProvider>
+      <ApiProvider>
+        <DataProvider>
+          <HashRouter>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route 
+                path="/*" 
+                element={
+                  <PrivateRoute>
+                    <Layout>
+                      <Routes>
+                        <Route index element={<Navigate to="/dashboard" />} />
+                        <Route path="dashboard" element={<Dashboard />} />
+                        <Route path="projects" element={<Projects />} />
+                        <Route path="projects/:projectId" element={<ProjectDetail />} />
+                        <Route path="tasks" element={<Tasks />} />
+                        <Route path="analytics" element={<Analytics />} />
+                        <Route path="sales-orders" element={<GlobalList type="Sales Order" />} />
+                        <Route path="purchase-orders" element={<GlobalList type="Purchase Order" />} />
+                        <Route path="customer-invoices" element={<GlobalList type="Customer Invoice" />} />
+                        <Route path="vendor-bills" element={<GlobalList type="Vendor Bill" />} />
+                        <Route path="expenses" element={<GlobalList type="Expense" />} />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </Layout>
+                  </PrivateRoute>
+                } 
+              />
+            </Routes>
+          </HashRouter>
+        </DataProvider>
+      </ApiProvider>
     </AuthProvider>
   );
 }

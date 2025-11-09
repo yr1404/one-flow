@@ -1,6 +1,5 @@
 const { validationResult } = require('express-validator');
-const { Project } = require('../models');
-
+const { Project, Task, TimeEntry, Expense, SalesOrder, User } = require('../models');
 
 exports.create = async (req, res, next) => {
   try {
@@ -140,4 +139,52 @@ exports.update = async (req, res, next) => {
     }
     next(err);
   }
+};
+
+exports.remove = async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    const project = await Project.findByPk(id);
+    if (!project) return res.status(404).json({ message: 'Project not found' });
+    await project.destroy();
+    res.json({ message: 'Project deleted' });
+  } catch (err) { next(err); }
+};
+
+exports.summary = async (req, res, next) => {
+  try {
+    const projectId = parseInt(req.params.id, 10);
+    const [project, tasks, salesOrders, expenses, timeEntries] = await Promise.all([
+      Project.findByPk(projectId),
+      Task.findAll({ where: { project_id: projectId } }),
+      SalesOrder.findAll({ where: { projectId } }),
+      Expense.findAll({ where: { project_id: projectId } }),
+      TimeEntry.findAll({ include: [{ model: require('../models').Task, as: 'task', where: { project_id: projectId }, required: true }] }),
+    ]);
+    if (!project) return res.status(404).json({ message: 'Project not found' });
+
+    const totalTasks = tasks.length;
+    const doneTasks = tasks.filter(t => (t.status || '').toLowerCase() === 'done').length;
+    const progress = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : ((project.status||'')==='completed' ? 100 : 0);
+
+    const revenue = salesOrders.reduce((s, so) => s + Number(so.totalAmount || 0), 0);
+
+    // cost = expenses + labor (sum timeEntry.hours * user.hourly_rate)
+    const expenseTotal = expenses.reduce((s,e)=> s + Number(e.amount||0), 0);
+    let labor = 0;
+    for (const te of timeEntries) {
+      const user = await User.findByPk(te.user_id);
+      const rate = Number(user?.hourly_rate || 0);
+      labor += Number(te.hours || 0) * rate;
+    }
+    const cost = expenseTotal + labor;
+
+    res.json({
+      project: project,
+      progress,
+      taskCounts: { total: totalTasks, done: doneTasks },
+      revenue,
+      cost,
+    });
+  } catch (err) { next(err); }
 };

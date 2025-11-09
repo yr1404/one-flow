@@ -57,4 +57,8 @@ router.get('/:id/tasks', auth.optional, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+router.get('/:id/summary', auth.required, ctrl.summary);
+
+router.delete('/:id', auth.required, ctrl.remove);
+
 module.exports = router;

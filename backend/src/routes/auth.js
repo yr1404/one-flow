@@ -11,6 +11,7 @@ router.post(
     body('name').trim().notEmpty().withMessage('Name is required'),
     body('email').isEmail().withMessage('Valid email required').normalizeEmail(),
     body('password').isLength({ min: 6 }).withMessage('Password min 6 chars'),
+    body('role').optional().isIn(['manager','team_member','finance','admin']).withMessage('Invalid role'),
   ],
   ctrl.signup
 );

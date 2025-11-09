@@ -108,6 +108,7 @@ export default Projects;
 
 const ProjectModal = ({ onClose, defaultValue }) => {
   const { users, upsertProject, removeProject } = useData();
+  const managers = React.useMemo(() => (users || []).filter(u => (u.roleRaw || u.role) === 'manager'), [users]);
   const isEditing = !!defaultValue;
   const [form, setForm] = useState(() => {
     if (isEditing) {
@@ -115,7 +116,7 @@ const ProjectModal = ({ onClose, defaultValue }) => {
         ...defaultValue,
         // Provide missing fields with safe defaults
         tags: Array.isArray(defaultValue.tags) ? defaultValue.tags : [],
-        managerId: defaultValue.managerId || users.find(u => u.name === defaultValue.manager)?.id || users[0]?.id || '',
+        managerId: defaultValue.managerId || managers[0]?.id || '',
         priority: defaultValue.priority || 'Medium',
         image: defaultValue.image || null,
         description: defaultValue.description || '',
@@ -129,7 +130,7 @@ const ProjectModal = ({ onClose, defaultValue }) => {
     return {
       name: '',
       customer: '',
-      managerId: users[0]?.id || '',
+      managerId: managers[0]?.id || '',
       deadline: new Date().toISOString().slice(0,10),
       priority: 'Medium',
       tags: [],
@@ -209,9 +210,13 @@ const ProjectModal = ({ onClose, defaultValue }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-brand-muted">Project Manager</label>
-              <select value={form.managerId} onChange={e=>setField('managerId', e.target.value)} className="mt-1 w-full px-3 py-2 rounded-xl bg-white border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-indigo/40">
-                {users.map(u => (<option key={u.id} value={u.id}>{u.name}</option>))}
-              </select>
+              {managers.length ? (
+                <select value={form.managerId} onChange={e=>setField('managerId', Number(e.target.value))} className="mt-1 w-full px-3 py-2 rounded-xl bg-white border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-indigo/40">
+                  {managers.map(u => (<option key={u.id} value={u.id}>{u.name}</option>))}
+                </select>
+              ) : (
+                <div className="mt-1 text-xs text-brand-muted">No managers available. Please create a user with role "manager".</div>
+              )}
             </div>
             <div>
               <label className="text-xs text-brand-muted">Deadline</label>

@@ -19,5 +19,6 @@ router.use('/expenses', require('./expenses'));
 router.use('/time-entries', require('./timeEntries'));
 router.use('/sales-order-items', require('./salesOrderItems'));
 router.use('/invoice-items', require('./invoiceItems'));
+router.use('/users', require('./users'));
 
 module.exports = router;

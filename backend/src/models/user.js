@@ -10,6 +10,7 @@ const User = sequelize.define("User", {
   email: { type: DataTypes.STRING(255), allowNull: false, unique: true },
   password_hash: { type: DataTypes.TEXT },
   role: { type: DataTypes.STRING(50), defaultValue: "user" },
+  hourly_rate: { type: DataTypes.DECIMAL(10,2), defaultValue: 0 },
   // virtual password field for setting plain password
   password: {
     type: DataTypes.VIRTUAL,

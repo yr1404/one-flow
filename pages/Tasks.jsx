@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useData } from '../contexts/DataContext.jsx';
+import { useApi } from '../contexts/ApiContext.jsx';
 import { MoreHorizontal, ChevronDown, Filter, Plus, X, Calendar, User as UserIcon, Tag, Clock } from 'lucide-react';
 
 const TaskCard = ({ task, users, onDragStart, onEdit, onAssign }) => {
@@ -149,6 +150,7 @@ const TaskColumn = ({ title, tasks, users, onDropTask, onDragStart, onEdit, onAs
 
 const Tasks = ({ projectId }) => {
   const { tasks, users, projects, upsertTask, removeTask } = useData();
+  const api = useApi();
   const isScoped = !!projectId; // if true, we are inside Project Detail and must hide dropdown
   const [selectedProject, setSelectedProject] = useState(projectId || 'all');
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -206,33 +208,37 @@ const Tasks = ({ projectId }) => {
     e.dataTransfer.setData('text/plain', task.id);
   };
 
-  const handleDropTask = (e, newStatus) => {
+  const handleDropTask = async (e, newStatus) => {
     const id = e.dataTransfer.getData('text/plain');
     if (!id) return;
-    const t = taskData.find(x => x.id === id);
+    const t = taskData.find(x => x.id === id || String(x.id) === String(id));
     if (!t) return;
     const updated = { ...t, status: newStatus, updatedAt: new Date().toISOString() };
-    upsertTask(updated);
+    await upsertTask(updated);
   };
 
-  const saveTask = (task) => {
-    upsertTask(task);
+  const saveTask = async (task) => {
+    await upsertTask(task);
   };
 
   const deleteTask = (id) => {
     removeTask(id);
   };
 
-  // Inline assignee update
-  const handleAssign = (taskId, userId) => {
+  // Inline assignee update with backend
+  const handleAssign = async (taskId, userId) => {
     setTaskData(prev => prev.map(t => {
       if (t.id !== taskId) return t;
-      const existing = Array.isArray(t.assignees) ? t.assignees : (t.assignee ? [t.assignee] : []);
-      const next = existing.includes(userId) ? existing.filter(id => id !== userId) : [...existing, userId];
-      const updated = { ...t, assignees: next, assignee: undefined, updatedAt: new Date().toISOString() };
-      upsertTask(updated);
-      return updated;
+      const existing = Array.isArray(t.assignees) ? t.assignees : [];
+      const isAssigned = existing.includes(userId);
+      const next = isAssigned ? existing.filter(id => id !== userId) : [...existing, userId];
+      return { ...t, assignees: next, updatedAt: new Date().toISOString() };
     }));
+    try {
+      const task = taskData.find(t => t.id === taskId);
+      if (!task) return;
+      if ((task.assignees || []).includes(userId)) await api.unassignUser(taskId, userId); else await api.assignUser(taskId, userId);
+    } catch (e) { /* ignore */ }
   };
 
   return (

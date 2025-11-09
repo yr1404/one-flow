@@ -81,3 +81,13 @@ exports.getById = async (req, res, next) => {
     res.json(task);
   } catch (err) { next(err); }
 };
+
+exports.remove = async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    const task = await Task.findByPk(id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    await task.destroy();
+    res.json({ message: 'Task deleted' });
+  } catch (err) { next(err); }
+};

@@ -1,158 +1,124 @@
-import React, { createContext, useContext, useState } from 'react';
-import { initialData } from '../data/mockData.js';
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
+import { useApi } from './ApiContext.jsx';
 
 const DataContext = createContext(null);
 
 export const DataProvider = ({ children }) => {
-  const computeProgress = (projects, tasks) => {
-    return projects.map(p => {
-      const pts = tasks.filter(t => t.projectId === p.id);
+  const api = useApi();
+  const [projects, setProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [users, setUsers] = useState([]); // placeholder until users endpoint exists
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Compute progress from tasks (Done/total)
+  const computeProgress = useCallback((projectsList, tasksList) => {
+    return projectsList.map(p => {
+      const pts = tasksList.filter(t => t.projectId === p.id);
       if (!pts.length) return p.status === 'Completed' ? { ...p, progress: 100 } : { ...p, progress: p.progress || 0 };
       const done = pts.filter(t => t.status === 'Done').length;
       const computed = Math.round((done / pts.length) * 100);
       return { ...p, progress: p.status === 'Completed' ? 100 : computed };
     });
+  }, []);
+
+  // Initial load: projects + per-project tasks
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoading(true); setError(null);
+        const [usersRows, proj] = await Promise.all([
+          api.listUsers().catch(()=>[]),
+          api.listProjects(),
+        ]);
+        const taskBatches = [];
+        for (const p of proj) {
+          try { taskBatches.push(await api.listProjectTasks(p.id)); } catch { taskBatches.push([]); }
+        }
+        let mergedTasks = taskBatches.flat();
+        const hydrated = [];
+        for (const t of mergedTasks) {
+          try {
+            const [assigneesRows, entries] = await Promise.all([
+              api.listTaskAssignees(t.id),
+              api.listTimeEntries(t.id),
+            ]);
+            hydrated.push({ ...t, assignees: (assigneesRows || []).map(r => r.user_id), timesheets: entries || [] });
+          } catch { hydrated.push(t); }
+        }
+        if (!mounted) return;
+        setUsers(usersRows);
+        setTasks(hydrated);
+        setProjects(computeProgress(proj, hydrated));
+      } catch (e) { if (mounted) setError(e.message); }
+      finally { if (mounted) setLoading(false); }
+    })();
+    return () => { mounted = false; };
+  }, [api, computeProgress]);
+
+  const getProjectById = (id) => projects.find(p => p.id === id);
+  const getTasksByProjectId = (projectId) => tasks.filter(t => t.projectId === projectId);
+
+  const upsertProject = async (project) => {
+    // Create or update via API according to presence of numeric id
+    if (project.id) {
+      const updated = await api.updateProject(project.id, project);
+      setProjects(prev => computeProgress(prev.map(p => p.id === updated.id ? { ...p, ...updated } : p), tasks));
+    } else {
+      const created = await api.createProject(project);
+      setProjects(prev => computeProgress([...prev, created], tasks));
+    }
   };
 
-  const [data, setData] = useState(() => {
-    const base = initialData;
-    const updatedProjects = computeProgress(base.projects || [], base.tasks || []);
-    return { ...base, projects: updatedProjects };
-  });
-
-  // In a real app, you'd have functions here to interact with an API (e.g., using React Query)
-  // For this MVP, we'll just pass the static data and some CRUD helpers.
-
-  const getProjectById = (id) => {
-    return data.projects.find(p => p.id === id);
-  };
-  
-  const getTasksByProjectId = (projectId) => {
-    return data.tasks.filter(t => t.projectId === projectId);
+  const removeProject = async (projectId) => {
+    try { await api.deleteProject(projectId); } catch {}
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+    setTasks(prev => prev.filter(t => t.projectId !== projectId));
   };
 
-  // Recalculate progress for all projects after task changes
-  const recalcAllProjectProgress = (tasksList) => {
-    return computeProgress(data.projects, tasksList);
+  const upsertTask = async (task) => {
+    if (task.id) {
+      const updated = await api.updateTask(task.id, task);
+      setTasks(prev => {
+        const next = prev.map(t => t.id === updated.id ? { ...t, ...updated } : t);
+        setProjects(pr => computeProgress(pr, next));
+        return next;
+      });
+    } else {
+      const created = await api.createTask(task);
+      setTasks(prev => {
+        const next = [...prev, created];
+        setProjects(pr => computeProgress(pr, next));
+        return next;
+      });
+    }
   };
 
-  const upsertTask = (task) => {
-    setData(prev => {
-      const list = prev.tasks || [];
-      const idx = list.findIndex(t => t.id === task.id);
-      const nextTasks = idx === -1 ? [...list, task] : list.map(t => t.id === task.id ? { ...t, ...task } : t);
-      const nextProjects = recalcAllProjectProgress(nextTasks);
-      return { ...prev, tasks: nextTasks, projects: nextProjects };
+  const removeTask = async (taskId) => {
+    try { await api.deleteTask(taskId); } catch {}
+    setTasks(prev => {
+      const next = prev.filter(t => t.id !== taskId);
+      setProjects(pr => computeProgress(pr, next));
+      return next;
     });
   };
 
-  const removeTask = (taskId) => {
-    setData(prev => {
-      const nextTasks = prev.tasks.filter(t => t.id !== taskId);
-      const nextProjects = recalcAllProjectProgress(nextTasks);
-      return { ...prev, tasks: nextTasks, projects: nextProjects };
-    });
-  };
-
-  // --- Helpers for documents/entities ---
-  const collectionKeyMap = {
-    'Sales Order': 'salesOrders',
-    'Purchase Order': 'purchaseOrders',
-    'Customer Invoice': 'customerInvoices',
-    'Vendor Bill': 'vendorBills',
-    'Expense': 'expenses',
-  };
-
-  const idPrefixMap = {
-    'Sales Order': { id: 'SO', number: 'SO' },
-    'Purchase Order': { id: 'PO', number: 'PO' },
-    'Customer Invoice': { id: 'INV', number: 'INV' },
-    'Vendor Bill': { id: 'BILL', number: 'BILL' },
-    'Expense': { id: 'EXP', number: 'EXP' },
-  };
-
-  const upsertEntity = (type, entity) => {
-    const key = collectionKeyMap[type];
-    if (!key) return;
-
-    setData(prev => {
-      const list = prev[key] || [];
-      const existingIndex = list.findIndex(e => e.id === entity.id);
-
-      let next = [...list];
-      // Generate IDs and Numbers if not provided
-      if (existingIndex === -1) {
-        const prefixes = idPrefixMap[type];
-        const nextIndex = list.length + 1;
-        const pad = (n) => String(n).padStart(3, '0');
-        const year = new Date().getFullYear();
-        const newId = entity.id || `${prefixes.id}-${pad(nextIndex)}`;
-        const newNumber = entity.number || `${prefixes.number}${year}-${pad(nextIndex)}`;
-        const toInsert = { ...entity, id: newId, number: newNumber };
-        next = [...list, toInsert];
-      } else {
-        next[existingIndex] = { ...list[existingIndex], ...entity };
-      }
-
-      return { ...prev, [key]: next };
-    });
-  };
-
-  const removeEntity = (type, id) => {
-    const key = collectionKeyMap[type];
-    if (!key) return;
-    setData(prev => ({ ...prev, [key]: prev[key].filter(e => e.id !== id) }));
-  };
-
-  const upsertProject = (project) => {
-    setData(prev => {
-      const list = prev.projects || [];
-      const idx = list.findIndex(p => p.id === project.id);
-      let next = [...list];
-      if (idx === -1) {
-        const newId = project.id || 'proj-' + Math.random().toString(36).slice(2);
-        const baseProj = { ...project, id: newId };
-        const withProgress = baseProj.status === 'Completed' ? { ...baseProj, progress: 100 } : baseProj;
-        next = [...list, withProgress];
-      } else {
-        const merged = { ...list[idx], ...project };
-        next[idx] = merged.status === 'Completed' ? { ...merged, progress: 100 } : merged;
-      }
-      // Recompute progress for all projects based on current tasks (in case task distribution changed)
-      const recomputed = computeProgress(next, prev.tasks);
-      return { ...prev, projects: recomputed };
-    });
-  };
-
-  // Delete a project and cascade removal of related records
-  const removeProject = (projectId) => {
-    setData(prev => ({
-      ...prev,
-      projects: prev.projects.filter(p => p.id !== projectId),
-      tasks: prev.tasks.filter(t => t.projectId !== projectId),
-      salesOrders: prev.salesOrders.filter(e => e.projectId !== projectId),
-      purchaseOrders: prev.purchaseOrders.filter(e => e.projectId !== projectId),
-      customerInvoices: prev.customerInvoices.filter(e => e.projectId !== projectId),
-      vendorBills: prev.vendorBills.filter(e => e.projectId !== projectId),
-      expenses: prev.expenses.filter(e => e.projectId !== projectId),
-    }));
-  };
-
-  const value = { 
-    ...data, 
-    getProjectById, 
+  const value = useMemo(() => ({
+    projects,
+    tasks,
+    users,
+    loading,
+    error,
+    getProjectById,
     getTasksByProjectId,
-    upsertEntity,
-    removeEntity,
     upsertProject,
     removeProject,
     upsertTask,
     removeTask,
-  };
+  }), [projects, tasks, users, loading, error]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 };
 
-export const useData = () => {
-  return useContext(DataContext);
-};
+export const useData = () => useContext(DataContext);

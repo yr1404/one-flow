@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useData } from '../contexts/DataContext.jsx';
+import { useApi } from '../contexts/ApiContext.jsx';
 import { Plus, Search, X, Calendar, DollarSign, User, FileText, Building2, PackageSearch, Image as ImageIcon, Download } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { createPortal } from 'react-dom';
@@ -447,18 +448,16 @@ const EntityModal = ({ type, data, defaultValue, onClose, onOpenProductPicker })
     setShowProducts(false);
   };
 
-  const createInvoiceFromOrder = () => {
+  const api = useApi();
+
+  const createInvoiceFromOrder = async () => {
     if (!isSalesOrder) return;
-    data.upsertEntity('Customer Invoice', {
-      projectId: form.projectId,
-      date: new Date().toISOString().slice(0,10),
-      amount: total,
-      state: 'Draft',
-      customer: form.customer || '',
-      items: form.items || [],
-      sourceSalesOrderId: form.id || defaultValue?.id || null,
-    });
-    window.alert('Invoice created.');
+    try {
+      await api.createInvoiceForSalesOrder(defaultValue?.id || form.id, total);
+      alert('Invoice created');
+    } catch (e) {
+      alert('Failed to create invoice: ' + (e?.message||'error'));
+    }
   };
 
   const createBillFromPO = () => {
