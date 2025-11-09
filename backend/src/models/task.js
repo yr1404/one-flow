@@ -7,9 +7,8 @@ const Task = sequelize.define("Task", {
   title: { type: DataTypes.STRING(200), allowNull: false },
   description: { type: DataTypes.TEXT },
   project_id: { type: DataTypes.INTEGER }, // FK -> Project.id
-  assigned_to: { type: DataTypes.INTEGER }, // FK -> User.id
   created_by: { type: DataTypes.INTEGER }, // FK -> User.id
-  status: { type: DataTypes.STRING(50), defaultValue: "todo" },
+  status: { type: DataTypes.STRING(50), defaultValue: "new" },
   priority: { type: DataTypes.STRING(30) },
   estimated_hours: { type: DataTypes.INTEGER },
   deadline: { type: DataTypes.DATE },

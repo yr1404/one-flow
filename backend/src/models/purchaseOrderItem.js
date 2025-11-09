@@ -7,7 +7,7 @@ const PurchaseOrderItem = sequelize.define("PurchaseOrderItem", {
   purchase_order_id: { type: DataTypes.INTEGER }, // FK -> PurchaseOrder.id
   product_id: { type: DataTypes.INTEGER }, // FK -> Product.id
   quantity: { type: DataTypes.INTEGER, defaultValue: 1 },
-  unit_price: { type: DataTypes.DECIMAL(12,2) },
+ 
   sub_total: { type: DataTypes.DECIMAL(12,2) },
 }, {
   timestamps: false

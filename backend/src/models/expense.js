@@ -11,6 +11,10 @@ const Expense = sequelize.define("Expense", {
   description: { type: DataTypes.TEXT },
   date: { type: DataTypes.DATE },
   status: { type: DataTypes.STRING(50), defaultValue: "pending" },
+  receiptUrl: { type: DataTypes.STRING(2048) },
+  createdAt: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+}, {
+  timestamps: false // manage createdAt manually; no updatedAt
 });
 
 module.exports = Expense;

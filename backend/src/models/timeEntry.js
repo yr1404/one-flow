@@ -9,7 +9,9 @@ const TimeEntry = sequelize.define("TimeEntry", {
   date: { type: DataTypes.DATEONLY },
   hours: { type: DataTypes.FLOAT, defaultValue: 0 },
   description: { type: DataTypes.TEXT },
-  billable: { type: DataTypes.BOOLEAN, defaultValue: false },
+  createdAt: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+}, {
+  timestamps: false // manage createdAt manually; no updatedAt
 });
 
 module.exports = TimeEntry;

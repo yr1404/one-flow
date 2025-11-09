@@ -4,7 +4,7 @@ const sequelize = require("./db-sequelize");
 
 const PurchaseOrder = sequelize.define("PurchaseOrder", {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-  vendor_id: { type: DataTypes.INTEGER }, // FK -> Vendor.id
+  vendor_id: { type: DataTypes.INTEGER }, // FK -> Partner.id (role='vendor')
   project_id: { type: DataTypes.INTEGER }, // FK -> Project.id
   created_by: { type: DataTypes.INTEGER }, // FK -> User.id
   expected_delivery: { type: DataTypes.DATE },

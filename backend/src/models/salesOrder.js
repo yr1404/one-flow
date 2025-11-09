@@ -4,15 +4,18 @@ const sequelize = require("./db-sequelize");
 
 const SalesOrder = sequelize.define("SalesOrder", {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-  customer_id: { type: DataTypes.INTEGER }, // FK -> Customer.id
-  project_id: { type: DataTypes.INTEGER }, // optional: project linked
-  created_by: { type: DataTypes.INTEGER }, // FK -> User.id
-  order_date: { type: DataTypes.DATE },
-  delivery_date: { type: DataTypes.DATE },
+  orderno: { type: DataTypes.STRING(50) },
+  partnerId: { type: DataTypes.INTEGER }, // FK -> Partner.id
+  projectId: { type: DataTypes.INTEGER }, // FK -> Project.id
+  createdBy: { type: DataTypes.INTEGER, field: 'createtedBy' }, // FK -> User.id (DB column kept as provided)
+  orderDate: { type: DataTypes.DATE },
   status: { type: DataTypes.STRING(50), defaultValue: "draft" },
-  total_amount: { type: DataTypes.DECIMAL(12,2) },
+  totalAmount: { type: DataTypes.DECIMAL(12,2) },
   tax: { type: DataTypes.DECIMAL(12,2) },
   note: { type: DataTypes.TEXT },
+}, {
+  timestamps: true,
+  updatedAt: false,
 });
 
 module.exports = SalesOrder;

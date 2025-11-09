@@ -92,3 +92,52 @@ exports.getById = async (req, res, next) => {
     res.json(project);
   } catch (err) { next(err); }
 };
+
+// Update an existing project (partial update)
+exports.update = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    const id = req.params.id;
+    const project = await Project.findByPk(id);
+    if (!project) return res.status(404).json({ message: 'Project not found' });
+
+    const allowed = [
+      'name',
+      'description',
+      'manager_id',
+      'start_date',
+      'deadline',
+      'status',
+      'priority',
+      'budget',
+      'tag',
+      'image_url',
+    ];
+
+    const updates = {};
+    for (const key of allowed) {
+      if (Object.prototype.hasOwnProperty.call(req.body, key)) {
+        updates[key] = req.body[key];
+      }
+    }
+
+    // If manager_id provided, validate existence
+    if (updates.manager_id) {
+      const { User } = require('../models');
+      const manager = await User.findByPk(updates.manager_id);
+      if (!manager) {
+        return res.status(400).json({ message: `manager_id ${updates.manager_id} does not reference an existing user` });
+      }
+    }
+
+    await project.update(updates);
+    res.json(project);
+  } catch (err) {
+    if (err.name === 'SequelizeForeignKeyConstraintError' && /manager_id/.test(err.message)) {
+      return res.status(400).json({ message: 'Invalid manager_id: user does not exist' });
+    }
+    next(err);
+  }
+};
