@@ -192,11 +192,7 @@ const ProjectModal = ({ onClose, defaultValue }) => {
             <label className="text-xs text-brand-muted">Project Name</label>
             <input value={form.name} onChange={e=>setField('name', e.target.value)} className="mt-1 w-full px-3 py-2 rounded-xl bg-white border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-indigo/40" placeholder="Enter project name" />
           </div>
-          <div>
-            <label className="text-xs text-brand-muted">Customer</label>
-            <input value={form.customer} onChange={e=>setField('customer', e.target.value)} className="mt-1 w-full px-3 py-2 rounded-xl bg-white border border-brand-border" placeholder="Customer name" />
-          </div>
-
+          {/* Customer field removed as requested */}
           <div>
             <label className="text-xs text-brand-muted">Tags</label>
             <div className="mt-1 flex flex-wrap gap-2">

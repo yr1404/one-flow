@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
@@ -13,6 +12,7 @@ import Tasks from './pages/Tasks.jsx';
 import Analytics from './pages/Analytics.jsx';
 import GlobalList from './pages/GlobalList.jsx';
 import NotFound from './pages/NotFound.jsx';
+import Landing from './pages/Landing.jsx';
 
 // A wrapper for routes that require authentication
 function PrivateRoute({ children }) {
@@ -26,6 +26,7 @@ function App() {
       <DataProvider>
         <HashRouter>
           <Routes>
+            <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route 

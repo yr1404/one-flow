@@ -356,6 +356,12 @@ const EntityModal = ({ type, data, defaultValue, onClose, onOpenProductPicker })
     receipt: defaultValue?.receipt || null,
   });
 
+  // Receipt upload handling (Cloudinary)
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [receiptPreview, setReceiptPreview] = useState(form.receipt);
+  const [receiptUploading, setReceiptUploading] = useState(false);
+  const [receiptError, setReceiptError] = useState('');
+
   const setField = (k,v) => setForm(prev => ({ ...prev, [k]: v }));
 
   const total = useMemo(()=> (form.items||[]).reduce((s,i)=> s + (i.qty*i.price||0), 0), [form.items]);
@@ -396,9 +402,38 @@ const EntityModal = ({ type, data, defaultValue, onClose, onOpenProductPicker })
     setField('state', next);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    data.upsertEntity(type, { ...form, amount: (isSalesOrder || isPurchaseOrder) ? total : form.amount });
+    let receiptUrl = form.receipt;
+    if (isExpense && receiptFile) {
+      setReceiptError('');
+      try {
+        setReceiptUploading(true);
+        const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+        const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+        if (!cloudName || !uploadPreset) {
+          setReceiptError('Cloudinary not configured.');
+        } else {
+          const formData = new FormData();
+          formData.append('file', receiptFile);
+          formData.append('upload_preset', uploadPreset);
+          const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body: formData });
+          const json = await res.json();
+          if (!res.ok) {
+            setReceiptError(json?.error?.message || 'Upload failed');
+            return; // abort submit
+          }
+          receiptUrl = json.secure_url || receiptUrl;
+        }
+      } catch (err) {
+        console.error('Receipt upload failed', err);
+        setReceiptError('Upload failed.');
+        return; // abort submit
+      } finally {
+        setReceiptUploading(false);
+      }
+    }
+    data.upsertEntity(type, { ...form, receipt: receiptUrl, amount: (isSalesOrder || isPurchaseOrder) ? total : form.amount });
     onClose();
   };
 
@@ -527,9 +562,23 @@ const EntityModal = ({ type, data, defaultValue, onClose, onOpenProductPicker })
                 </div>
                 <div className="md:col-span-2">
                   <label className="text-xs text-brand-muted">Receipt Image</label>
-                  <div className="mt-1 flex items-center gap-2">
-                    <input type="file" accept="image/*" onChange={e=>{ const file = e.target.files?.[0]; if(!file) return; const reader = new FileReader(); reader.onload= () => setField('receipt', reader.result); reader.readAsDataURL(file); }} className="text-xs" />
-                    {form.receipt && <img src={form.receipt} alt="receipt" className="h-14 rounded-md border" />}
+                  <div className="mt-1 flex items-center gap-3 flex-wrap">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={e=> {
+                        const f = e.target.files?.[0];
+                        setReceiptError('');
+                        if (!f) return;
+                        setReceiptFile(f);
+                        setReceiptPreview(URL.createObjectURL(f));
+                      }}
+                      className="text-xs"
+                    />
+                    {receiptPreview && <img src={receiptPreview} alt="receipt" className="h-16 rounded-md border object-cover" />}
+                    {receiptUploading && <span className="text-xs text-brand-muted">Uploading...</span>}
+                    {receiptError && <span className="text-xs text-red-600">{receiptError}</span>}
+                    {!receiptPreview && <span className="text-xs text-brand-muted">Optional</span>}
                   </div>
                 </div>
               </>
@@ -598,7 +647,7 @@ const EntityModal = ({ type, data, defaultValue, onClose, onOpenProductPicker })
             {(isSalesOrder) && <button type="button" onClick={createInvoiceFromOrder} className="px-3 py-2 rounded-xl border border-brand-border text-text-primary hover:bg-brand-bg">Create Invoice</button>}
             {(isPurchaseOrder) && <button type="button" onClick={createBillFromPO} className="px-3 py-2 rounded-xl border border-brand-border text-text-primary hover:bg-brand-bg">Create Bill</button>}
             <button type="button" onClick={onClose} className="px-3 py-2 rounded-xl border border-brand-border text-text-primary hover:bg-brand-bg">Cancel</button>
-            <button type="submit" className="btn-pill">{defaultValue? 'Save Changes' : 'Create'}</button>
+            <button type="submit" className="btn-pill" disabled={receiptUploading}>{defaultValue? 'Save Changes' : 'Create'}</button>
           </div>
         </form>
 

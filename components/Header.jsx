@@ -6,9 +6,13 @@ import { useLocation } from 'react-router-dom';
 import logoUrl from '../assets/logo.svg';
 
 const Header = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateAvatar } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [localAvatar, setLocalAvatar] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadError, setUploadError] = useState('');
   const location = useLocation();
   const dropdownRef = useRef(null);
 
@@ -73,6 +77,26 @@ const Header = () => {
             <div className="max-h-[90vh] overflow-y-auto p-6">
               <h3 className="text-lg font-semibold mb-4">My Profile</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2 flex items-center gap-4">
+                  <img src={localAvatar || user.avatar} alt="avatar" className="w-16 h-16 rounded-full object-cover ring-2 ring-white shadow-innerGlow" />
+                  <div>
+                    <label className="text-xs text-brand-muted block mb-1">Profile Picture</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e)=> {
+                        const f = e.target.files && e.target.files[0];
+                        setUploadError('');
+                        if (f) {
+                          setSelectedFile(f);
+                          setLocalAvatar(URL.createObjectURL(f));
+                        }
+                      }}
+                    />
+                    {uploadError && <p className="text-xs text-red-600 mt-1">{uploadError}</p>}
+                    <p className="text-xs text-brand-muted mt-1">PNG, JPG up to ~5MB</p>
+                  </div>
+                </div>
                 <div>
                   <label className="text-xs text-brand-muted">Full Name</label>
                   <input defaultValue={user.name} className="mt-1 w-full px-3 py-2 rounded-xl bg-white border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-indigo/40" />
@@ -92,7 +116,51 @@ const Header = () => {
               </div>
               <div className="mt-5 flex justify-end gap-2">
                 <button onClick={() => setProfileOpen(false)} className="px-3 py-2 rounded-xl border border-brand-border text-text-primary hover:bg-brand-bg">Cancel</button>
-                <button onClick={() => { /* TODO: persist changes */ setProfileOpen(false); }} className="btn-pill">Save Changes</button>
+                <button
+                  onClick={async () => {
+                    setUploadError('');
+                    let success = false;
+                    try {
+                      if (selectedFile) {
+                        setUploading(true);
+                        const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+                        const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+                        if (!cloudName || !uploadPreset) {
+                          setUploadError('Cloudinary is not configured. Set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET.');
+                        } else {
+                          const form = new FormData();
+                          form.append('file', selectedFile);
+                          form.append('upload_preset', uploadPreset);
+                          const url = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+                          const res = await fetch(url, { method: 'POST', body: form });
+                          const data = await res.json();
+                          if (!res.ok) {
+                            setUploadError(data?.error?.message || 'Upload failed.');
+                          } else if (data.secure_url) {
+                            updateAvatar(data.secure_url);
+                            success = true;
+                          }
+                        }
+                      } else {
+                        success = true; // nothing to upload, still allow close
+                      }
+                    } catch (e) {
+                      console.error('Cloudinary upload failed', e);
+                      setUploadError('Upload failed. Please try again.');
+                    } finally {
+                      setUploading(false);
+                      if (success) {
+                        setProfileOpen(false);
+                        setSelectedFile(null);
+                        setLocalAvatar(null);
+                      }
+                    }
+                  }}
+                  className="btn-pill"
+                  disabled={uploading}
+                >
+                  {uploading ? 'Saving...' : 'Save Changes'}
+                </button>
               </div>
             </div>
           </div>

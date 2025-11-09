@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext } from 'react';
 
 const AuthContext = createContext(null);
@@ -27,17 +26,21 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
   
-  const signup = (name, email, password) => {
-    console.log('Signing up with', name, email, password);
+  const signup = (name, email, password, role='Project Manager') => {
+    console.log('Signing up with', name, email, password, role);
     setUser({
         name,
         email,
-        role: 'Project Manager',
+        role,
         avatar: `https://picsum.photos/seed/${name}/100/100`
     });
-  }
+  };
 
-  const value = { user, login, logout, signup };
+  const updateAvatar = (url) => {
+    setUser(prev => prev ? { ...prev, avatar: url } : prev);
+  };
+
+  const value = { user, login, logout, signup, updateAvatar };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
