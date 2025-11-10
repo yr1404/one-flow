@@ -13,6 +13,7 @@ router.patch('/:id', auth.required, [
   body('name').optional().isString(),
   body('role').optional().isString(),
   body('hourly_rate').optional().isNumeric(),
+  body('image_url').optional().isURL().withMessage('image_url must be a valid URL'),
 ], validate, ctrl.update);
 
 module.exports = router;

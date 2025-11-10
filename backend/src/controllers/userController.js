@@ -23,7 +23,7 @@ exports.update = async (req, res, next) => {
   try {
     const user = await User.findByPk(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    const allowed = ['name','role','hourly_rate'];
+  const allowed = ['name','role','hourly_rate','image_url'];
     const updates = {};
     for (const k of allowed) if (Object.prototype.hasOwnProperty.call(req.body, k)) updates[k] = req.body[k];
     await user.update(updates);

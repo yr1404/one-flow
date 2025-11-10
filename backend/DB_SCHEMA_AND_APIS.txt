@@ -1,0 +1,305 @@
+One Flow - Database schema and API list
+
+--- Database tables (models) ---
+
+Attachment
+- id: INTEGER PK
+- task_id: INTEGER (FK -> Task.id)
+- user_id: INTEGER (FK -> User.id)
+- file_name: STRING(300)
+- file_url: TEXT
+- attached_at: DATE (default NOW)
+
+Comment
+- id: INTEGER PK
+- task_id: INTEGER (FK -> Task.id)
+- user_id: INTEGER (FK -> User.id)
+- content: TEXT (NOT NULL)
+- created_at: DATE (default NOW)
+
+Customer
+- id: INTEGER PK
+- name: STRING(200) NOT NULL
+- email: STRING(255)
+- phone: STRING(50)
+- address: TEXT
+- created_by: INTEGER (FK -> User.id)
+
+Expense
+- id: INTEGER PK
+- project_id: INTEGER (FK -> Project.id)
+- user_id: INTEGER (FK -> User.id)
+- amount: DECIMAL(12,2)
+- category: STRING(100)
+- description: TEXT
+- date: DATE
+- status: STRING(50) (default: "pending")
+- receiptUrl: STRING(2048)
+- createdAt: DATE (default NOW)
+
+Invoice
+- id: INTEGER PK
+- sales_order_id: INTEGER NOT NULL (FK -> SalesOrder.id)
+- status: STRING(30) (default: "pending")
+- amount: DECIMAL(12,2) (default: 0)
+
+InvoiceItem
+- id: INTEGER PK
+- invoice_id: INTEGER NOT NULL (FK -> Invoice.id)
+- product_id: INTEGER NOT NULL (FK -> Product.id)
+- quantity: INTEGER (default 1)
+- sub_total: DECIMAL(12,2)
+
+Partner
+- id: INTEGER PK
+- name: STRING(200) NOT NULL
+- email: STRING(255)
+- phone: STRING(50)
+- address: TEXT
+- role: ENUM('vendor','customer') NOT NULL
+- created_by: INTEGER (FK -> User.id)
+
+Product
+- id: INTEGER PK
+- name: STRING(200) NOT NULL
+- unitPrice: DECIMAL(12,2)
+- quantityAvailable: INTEGER
+- createdAt: DATE (default NOW)
+- tax: DECIMAL(5,2)
+- cost: DECIMAL(12,2)
+
+Project
+- id: INTEGER PK
+- name: STRING(200) NOT NULL
+- description: TEXT
+- manager_id: INTEGER (FK -> User.id)
+- start_date: DATE
+- deadline: DATE
+- status: STRING(50) (default: "planned")
+- priority: STRING(30)
+- budget: DECIMAL(12,2)
+- tag: STRING(100)
+- image_url: STRING
+
+ProjectTeam
+- id: INTEGER PK
+- team_id: INTEGER (FK -> Team.id)
+- project_id: INTEGER (FK -> Project.id)
+- assigned_at: DATE (default NOW)
+
+PurchaseOrder
+- id: INTEGER PK
+- vendor_id: INTEGER (FK -> Partner.id)
+- project_id: INTEGER (FK -> Project.id)
+- created_by: INTEGER (FK -> User.id)
+- expected_delivery: DATE
+- status: STRING(50) (default: "draft")
+- total_amount: DECIMAL(12,2)
+- tax: DECIMAL(12,2)
+- note: TEXT
+
+PurchaseOrderItem
+- id: INTEGER PK
+- purchase_order_id: INTEGER (FK -> PurchaseOrder.id)
+- product_id: INTEGER (FK -> Product.id)
+- quantity: INTEGER (default 1)
+- sub_total: DECIMAL(12,2)
+
+SalesOrder
+- id: INTEGER PK
+- orderno: STRING(50)
+- partnerId: INTEGER (FK -> Partner.id)
+- projectId: INTEGER (FK -> Project.id)
+- createdBy: INTEGER (DB field 'createtedBy')
+- orderDate: DATE
+- status: STRING(50) (default: "draft")
+- totalAmount: DECIMAL(12,2)
+- tax: DECIMAL(12,2)
+- note: TEXT
+
+SalesOrderItem
+- id: INTEGER PK
+- sales_order_id: INTEGER (FK -> SalesOrder.id)
+- product_id: INTEGER (FK -> Product.id)
+- quantity: INTEGER (default 1)
+- sub_total: DECIMAL(12,2)
+
+Task
+- id: INTEGER PK
+- title: STRING(200) NOT NULL
+- description: TEXT
+- project_id: INTEGER (FK -> Project.id)
+- created_by: INTEGER (FK -> User.id)
+- status: STRING(50) (default: "new")
+- priority: STRING(30)
+- estimated_hours: INTEGER
+- deadline: DATE
+
+TaskAssignee
+- id: INTEGER PK
+- task_id: INTEGER NOT NULL (FK -> Task.id)
+- user_id: INTEGER NOT NULL (FK -> User.id)
+(unique index on task_id+user_id)
+
+Team
+- id: INTEGER PK
+- name: STRING(150) NOT NULL
+- description: TEXT
+
+TeamMember
+- id: INTEGER PK
+- team_id: INTEGER (FK -> Team.id)
+- user_id: INTEGER (FK -> User.id)
+- role: STRING(100)
+- joined_at: DATE (default NOW)
+
+TimeEntry
+- id: INTEGER PK
+- user_id: INTEGER (FK -> User.id)
+- task_id: INTEGER (FK -> Task.id)
+- date: DATEONLY
+- hours: FLOAT (default 0)
+- description: TEXT
+- createdAt: DATE (default NOW)
+
+User
+- id: INTEGER PK
+- name: STRING(150) NOT NULL
+- email: STRING(255) NOT NULL UNIQUE
+- password_hash: TEXT
+- role: STRING(50) (default: "user")
+- hourly_rate: DECIMAL(10,2) (default 0)
+- image_url: STRING(2048)
+- (virtual password field not persisted)
+
+Vendor
+- id: INTEGER PK
+- name: STRING(200) NOT NULL
+- email: STRING(255)
+- phone: STRING(50)
+- address: TEXT
+- created_by: INTEGER (FK -> User.id)
+
+VendorBill
+- id: INTEGER PK
+- vendor_id: INTEGER NOT NULL (FK -> Partner.id)
+- purchase_order_id: INTEGER NOT NULL (FK -> PurchaseOrder.id)
+- createdAt: DATE (default NOW)
+- status: STRING(30) (default: 'pending')
+- amount: DECIMAL(12,2) (default 0)
+
+VendorBillItem
+- id: INTEGER PK
+- vendor_bill_id: INTEGER (FK -> VendorBill.id)
+- product_id: INTEGER (FK -> Product.id)
+
+
+--- API endpoints (mounted under /api) ---
+
+Auth
+- POST /api/auth/signup - create a user (body: name, email, password, role?, image_url?) => returns { token, user }
+- POST /api/auth/login - authenticate (body: email, password) => returns { token, user }
+- GET /api/auth/me - get current user (auth required)
+
+Users
+- GET /api/users - list users (auth required)
+- GET /api/users/:id - get user by id (auth required)
+- PATCH /api/users/:id - partial update (auth required) (fields: name, role, hourly_rate, image_url)
+
+Projects
+- GET /api/projects - list projects
+- GET /api/projects/:id - get project
+- POST /api/projects - create project (body: name, manager_id?, start_date?, deadline?, status?, priority?, budget?, tag?, image_url?)
+- PUT /api/projects/:id - update project
+- GET /api/projects/:id/tasks - list tasks for project
+- GET /api/projects/:id/summary - project summary (auth required)
+- DELETE /api/projects/:id - delete project (auth required)
+
+Tasks
+- POST /api/tasks - create task
+- PUT /api/tasks/:id - update task
+- GET /api/tasks/:id - get task
+- GET /api/tasks/:id/assignees - get assigned users
+- DELETE /api/tasks/:id - delete task
+
+Task Assignees
+- POST /api/task-assignees - assign user to task (body: task_id, user_id)
+- GET /api/task-assignees/task/:taskId - list assignments for a task
+- DELETE /api/task-assignees - remove assignment (body: task_id, user_id)
+- GET /api/task-assignees/user/:userId/count - count tasks for user
+
+Time Entries
+- POST /api/time-entries - create time entry (body: task_id, user_id?, date?, hours?, description?)
+- PUT /api/time-entries/:id - update time entry
+- GET /api/time-entries - list
+- GET /api/time-entries/:id - get by id
+
+Expenses
+- POST /api/expenses - create expense (body: amount, project_id?, user_id?, category?, description?, date?, receiptUrl?)
+- PUT /api/expenses/:id - update
+- GET /api/expenses - list
+- GET /api/expenses/:id - get by id
+
+Products
+- GET /api/products - list
+- GET /api/products/:id - get
+- POST /api/products - create (name, unitPrice?, quantityAvailable?, tax?, cost?)
+- PUT /api/products/:id - update
+
+Partners
+- POST /api/partners - create partner (name, role: vendor|customer, email?, phone?, address?)
+- GET /api/partners - list (query role filter)
+- GET /api/partners/:id - get by id
+
+Purchase Orders
+- POST /api/purchase-orders - create
+- PUT /api/purchase-orders/:id - update
+- GET /api/purchase-orders - list
+- GET /api/purchase-orders/:id - get by id
+
+Purchase Order Items
+- POST /api/purchase-order-items - create
+- PUT /api/purchase-order-items/:id - update
+- GET /api/purchase-order-items/:id - get by id
+
+Sales Orders
+- POST /api/sales-orders - create
+- PUT /api/sales-orders/:id - update
+- GET /api/sales-orders - list
+- GET /api/sales-orders/:id - get by id
+
+Sales Order Items
+- POST /api/sales-order-items - create
+- PUT /api/sales-order-items/:id - update
+- GET /api/sales-order-items/:id - get by id
+
+Invoices
+- POST /api/invoices - create (sales_order_id required)
+- PUT /api/invoices/:id - update
+- GET /api/invoices - list
+- GET /api/invoices/:id - get by id
+
+Invoice Items
+- POST /api/invoice-items - create
+- GET /api/invoice-items/:id - get by id
+- PUT /api/invoice-items/:id - update
+
+Vendor Bills
+- POST /api/vendor-bills - create
+- PUT /api/vendor-bills/:id - update
+- GET /api/vendor-bills - list
+- GET /api/vendor-bills/:id - get by id
+
+Vendor Bill Items
+- POST /api/vendor-bill-items - create
+- PUT /api/vendor-bill-items/:id - update
+- GET /api/vendor-bill-items - list
+- GET /api/vendor-bill-items/:id - get by id
+
+
+Notes:
+- Most endpoints are protected by auth.required unless 'auth.optional' is explicitly used in the route file.
+- Validation rules are defined using express-validator in each route file.
+- The Sequelize models use underscored: true and timestamps: true by default (unless disabled per model).
+- The `image_url` field was added to the `User` model and is accepted in `POST /api/auth/signup` and `PATCH /api/users/:id`.
+

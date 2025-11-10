@@ -11,6 +11,7 @@ const User = sequelize.define("User", {
   password_hash: { type: DataTypes.TEXT },
   role: { type: DataTypes.STRING(50), defaultValue: "user" },
   hourly_rate: { type: DataTypes.DECIMAL(10,2), defaultValue: 0 },
+  image_url: { type: DataTypes.STRING(2048), allowNull: true },
   // virtual password field for setting plain password
   password: {
     type: DataTypes.VIRTUAL,
