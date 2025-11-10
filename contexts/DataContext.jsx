@@ -8,6 +8,12 @@ export const DataProvider = ({ children }) => {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]); // placeholder until users endpoint exists
+  // In‑memory commercial documents (not yet persisted via backend)
+  const [salesOrders, setSalesOrders] = useState([]);
+  const [purchaseOrders, setPurchaseOrders] = useState([]);
+  const [customerInvoices, setCustomerInvoices] = useState([]);
+  const [vendorBills, setVendorBills] = useState([]);
+  const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -61,7 +67,6 @@ export const DataProvider = ({ children }) => {
   const getTasksByProjectId = (projectId) => tasks.filter(t => t.projectId === projectId);
 
   const upsertProject = async (project) => {
-    // Create or update via API according to presence of numeric id
     if (project.id) {
       const updated = await api.updateProject(project.id, project);
       setProjects(prev => computeProgress(prev.map(p => p.id === updated.id ? { ...p, ...updated } : p), tasks));
@@ -104,10 +109,54 @@ export const DataProvider = ({ children }) => {
     });
   };
 
+  // Generic upsert for commercial docs used by GlobalList (in-memory only for now)
+  const upsertEntity = (type, entity) => {
+    const ensureId = (e) => e.id ? e : { ...e, id: 'tmp_' + Date.now() + '_' + Math.random().toString(36).slice(2) };
+    switch(type) {
+      case 'Sales Order':
+        setSalesOrders(list => {
+          const e = ensureId(entity);
+            return list.some(x => x.id === e.id) ? list.map(x => x.id === e.id ? { ...x, ...e } : x) : [...list, e];
+        });
+        break;
+      case 'Purchase Order':
+        setPurchaseOrders(list => {
+          const e = ensureId(entity);
+          return list.some(x => x.id === e.id) ? list.map(x => x.id === e.id ? { ...x, ...e } : x) : [...list, e];
+        });
+        break;
+      case 'Customer Invoice':
+        setCustomerInvoices(list => {
+          const e = ensureId(entity);
+          return list.some(x => x.id === e.id) ? list.map(x => x.id === e.id ? { ...x, ...e } : x) : [...list, e];
+        });
+        break;
+      case 'Vendor Bill':
+        setVendorBills(list => {
+          const e = ensureId(entity);
+          return list.some(x => x.id === e.id) ? list.map(x => x.id === e.id ? { ...x, ...e } : x) : [...list, e];
+        });
+        break;
+      case 'Expense':
+        setExpenses(list => {
+          const e = ensureId(entity);
+          return list.some(x => x.id === e.id) ? list.map(x => x.id === e.id ? { ...x, ...e } : x) : [...list, e];
+        });
+        break;
+      default:
+        console.warn('Unknown entity type for upsertEntity:', type);
+    }
+  };
+
   const value = useMemo(() => ({
     projects,
     tasks,
     users,
+    salesOrders,
+    purchaseOrders,
+    customerInvoices,
+    vendorBills,
+    expenses,
     loading,
     error,
     getProjectById,
@@ -116,7 +165,8 @@ export const DataProvider = ({ children }) => {
     removeProject,
     upsertTask,
     removeTask,
-  }), [projects, tasks, users, loading, error]);
+    upsertEntity,
+  }), [projects, tasks, users, salesOrders, purchaseOrders, customerInvoices, vendorBills, expenses, loading, error]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 };

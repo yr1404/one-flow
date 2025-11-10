@@ -8,6 +8,14 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        proxy: {
+          // Proxy API to backend to avoid CORS during development
+          '/api': {
+            target: env.VITE_API_URL,
+            changeOrigin: true,
+            secure: false,
+          }
+        }
       },
       plugins: [react()],
       resolve: {

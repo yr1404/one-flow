@@ -1,20 +1,33 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { useAuth } from './AuthContext.jsx';
 
-// Simple API abstraction: fetch + auth + mapping utilities
 const ApiContext = createContext(null);
 
-const API_BASE = (typeof window !== 'undefined' && (window.__VITE_API_URL__ || import.meta?.env?.VITE_API_URL)) ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api` : 'https://3e7ae4f00f7a.ngrok-free.app/api';
+// In dev, let Vite proxy handle /api to avoid CORS. In prod, use VITE_API_URL.
+const API_BASE = import.meta.env.DEV
+  ? '/api'
+  : `${(import.meta.env.VITE_API_URL || '').replace(/\/$/, '')}/api`;
 
 async function request(path, { method='GET', body, token } = {}) {
-  const headers = { 'Content-Type': 'application/json' };
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
+  };
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  } catch (networkErr) {
+    throw new Error(`Network error: ${networkErr.message || networkErr}`);
+  }
+  const ct = res.headers.get('content-type') || '';
   let data = null;
-  try { data = await res.json(); } catch { data = null; }
+  if (ct.includes('application/json')) { try { data = await res.json(); } catch { data = null; } }
+  else { const text = await res.text().catch(()=> ''); throw new Error(`Unexpected content-type: ${ct || 'none'}`); }
   if (!res.ok) {
     const errList = Array.isArray(data?.errors) ? data.errors.map(e => e.msg || e.message || `${e.param||''} invalid`).join(', ') : null;
-    const msg = data?.message || errList || 'Request failed';
+    const msg = data?.message || errList || `${res.status} ${res.statusText}`;
     throw new Error(msg);
   }
   return data;
@@ -217,6 +230,7 @@ export const ApiProvider = ({ children }) => {
 
     // Users
     async listUsers() { return request('/users', { token }); },
+    async updateUser(id, body) { return request(`/users/${id}`, { method:'PATCH', body, token }); },
 
     // Summaries
     async fetchProjectSummary(id) { return request(`/projects/${id}/summary`, { token }); },

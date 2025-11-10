@@ -17,8 +17,19 @@ import Landing from './pages/Landing.jsx';
 
 // A wrapper for routes that require authentication
 function PrivateRoute({ children }) {
-  const { user } = useAuth();
+  const { user, initialized } = useAuth();
+  if (!initialized) return <div className="min-h-screen flex items-center justify-center text-sm text-brand-muted">Checking session...</div>;
   return user ? children : <Navigate to="/login" />;
+}
+
+// A wrapper for public routes: if already logged in, go to dashboard
+function PublicRoute({ children }) {
+  const { user, initialized, token } = useAuth();
+  if (!initialized) {
+    // Avoid flicker if a token exists; wait until session check completes
+    return token ? <div className="min-h-screen flex items-center justify-center text-sm text-brand-muted">Checking session...</div> : children;
+  }
+  return user ? <Navigate to="/dashboard" /> : children;
 }
 
 function App() {
@@ -28,9 +39,9 @@ function App() {
         <DataProvider>
           <HashRouter>
             <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
+              <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
+              <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+              <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
               <Route 
                 path="/*" 
                 element={
